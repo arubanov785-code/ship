@@ -102,21 +102,17 @@ public class ShipManager {
         int waterY = loc.getBlockY();
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world))) {
-            editSession.setSideEffectApplier(com.sk89q.worldedit.util.sideeffect.SideEffectSet.none());
 
-            // Очищаем то, что выше воды -> Воздух
             BlockVector3 minAir = BlockVector3.at(minX, waterY + 1, minZ);
             BlockVector3 maxAir = BlockVector3.at(maxX, waterY + 50, maxZ);
             com.sk89q.worldedit.regions.CuboidRegion airRegion = new com.sk89q.worldedit.regions.CuboidRegion(minAir, maxAir);
             editSession.setBlocks((com.sk89q.worldedit.regions.Region) airRegion, BukkitAdapter.adapt(Material.AIR.createBlockData()));
 
-            // Очищаем то, что на/ниже уровня воды -> Вода
             BlockVector3 minWater = BlockVector3.at(minX, waterY - 10, minZ);
             BlockVector3 maxWater = BlockVector3.at(maxX, waterY, maxZ);
             com.sk89q.worldedit.regions.CuboidRegion waterRegion = new com.sk89q.worldedit.regions.CuboidRegion(minWater, maxWater);
             editSession.setBlocks((com.sk89q.worldedit.regions.Region) waterRegion, BukkitAdapter.adapt(Material.WATER.createBlockData()));
 
-            Operations.complete(editSession.commit());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -206,12 +202,10 @@ public class ShipManager {
         
         ProtectedCuboidRegion region = new ProtectedCuboidRegion("pirate_ship_event", min, max);
         
-        // Флаги привата
         region.setFlag(Flags.PVP, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_BREAK, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_PLACE, StateFlag.State.DENY);
         
-        // Разрешаем доступ к сундукам/бочкам и взаимодействие для обычных игроков
         region.setFlag(Flags.CHEST_ACCESS, StateFlag.State.ALLOW);
         region.setFlag(Flags.INTERACT, StateFlag.State.ALLOW);
 
@@ -221,7 +215,6 @@ public class ShipManager {
     private void spawnPirates(Location loc) {
         World world = loc.getWorld();
         
-        // Разбойники на мачтах
         for (int i = 0; i < 6; i++) {
             Location archerLoc = loc.clone().add(random.nextInt(10) - 5, 18, random.nextInt(10) - 5);
             Pillager p = (Pillager) world.spawnEntity(archerLoc, EntityType.PILLAGER);
@@ -229,7 +222,6 @@ public class ShipManager {
             p.setCustomNameVisible(true);
         }
 
-        // Поборники на сухой палубе (+3..+5 блоков над уровнем воды)
         for (int i = 0; i < 10; i++) {
             Location brawlerLoc = loc.clone().add(random.nextInt(14) - 7, 3 + random.nextInt(2), random.nextInt(14) - 7);
             Vindicator v = (Vindicator) world.spawnEntity(brawlerLoc, EntityType.VINDICATOR);
