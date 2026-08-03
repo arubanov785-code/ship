@@ -36,24 +36,19 @@ public class PirateShipPlugin extends JavaPlugin {
     }
 
     private void startEventTimer() {
-        // 6 часов = 432 000 тиков
         long sixHoursInTicks = 432000L;
         
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            
-            // Оповещение за 1 час
             Bukkit.getScheduler().runTaskLater(this, () -> {
                 Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', 
                     "&8[&c&lПИРАТЫ&8] &eКапитан Черная Борода поднимает паруса! Пиратский корабль прибудет через &c1 час&e!"));
             }, sixHoursInTicks - 72000L);
 
-            // Оповещение за 5 минут
             Bukkit.getScheduler().runTaskLater(this, () -> {
                 Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', 
                     "&8[&c&lПИРАТЫ&8] &eНа горизонте виднеются черные паруса! Корабль бросит якорь через &c5 минут&e!"));
             }, sixHoursInTicks - 6000L);
 
-            // Спавн корабля
             Bukkit.getScheduler().runTaskLater(this, () -> {
                 shipManager.spawnShipEvent();
             }, sixHoursInTicks);
