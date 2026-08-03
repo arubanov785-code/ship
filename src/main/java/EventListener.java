@@ -27,11 +27,6 @@ public class EventListener implements Listener {
 
     private final Random random = new Random();
 
-    // -------------------------------------------------------------
-    // ЛОГИКА ОГРАНИЧЕНИЯ ПОЛЕТА (ВКЛЮЧАЯ БАЙПАС)
-    // -------------------------------------------------------------
-    
-    // Проверка, находится ли игрок в регионе корабля
     private boolean isInShipRegion(Player player) {
         RegionManager rm = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(player.getWorld()));
         if (rm == null) return false;
@@ -45,12 +40,9 @@ public class EventListener implements Listener {
         return false;
     }
 
-    // Если игрок нажал пробел, чтобы взлететь
     @EventHandler
     public void onToggleFlight(PlayerToggleFlightEvent event) {
         Player player = event.getPlayer();
-
-        // Пропускаем игроков с правами байпаса
         if (player.hasPermission("pirateship.bypass.fly") || player.isOp()) return;
 
         if (event.isFlying() && isInShipRegion(player)) {
@@ -61,11 +53,9 @@ public class EventListener implements Listener {
         }
     }
 
-    // Если игрок влетел в область корабля уже в режиме полёта
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        
         if (player.hasPermission("pirateship.bypass.fly") || player.isOp()) return;
 
         if (player.isFlying() && isInShipRegion(player)) {
@@ -74,10 +64,6 @@ public class EventListener implements Listener {
             player.sendMessage(ChatColor.RED + "☠ Ваша магия полёта рассеялась над кораблем!");
         }
     }
-
-    // -------------------------------------------------------------
-    // КЛЮЧИ И ЛУТ С БОЧЕК
-    // -------------------------------------------------------------
 
     private ItemStack getPirateKey() {
         ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK);
@@ -92,7 +78,6 @@ public class EventListener implements Listener {
     public void onPirateDeath(EntityDeathEvent event) {
         Entity entity = event.getEntity();
         if (entity.getCustomName() != null && entity.getCustomName().contains("Пират")) {
-            // Шанс 35% выбить ключ
             if (random.nextInt(100) < 35) {
                 event.getDrops().add(getPirateKey());
             }
@@ -111,30 +96,27 @@ public class EventListener implements Listener {
             item.getItemMeta().getDisplayName().contains("Ключ от пиратской бочки")) {
             
             event.setCancelled(true);
-            item.setAmount(item.getAmount() - 1); // Забираем 1 ключ
+            item.setAmount(item.getAmount() - 1);
             
             giveLoot(player);
-            event.getClickedBlock().setType(Material.AIR); // Уничтожаем бочку после открытия
+            event.getClickedBlock().setType(Material.AIR);
             player.sendMessage(ChatColor.GREEN + "💰 Вы отперли пиратскую бочку!");
         }
     }
 
     private void giveLoot(Player player) {
-        // Броня с Protection 1-2
         ItemStack diamondChest = new ItemStack(Material.DIAMOND_CHESTPLATE);
         diamondChest.addEnchantment(Enchantment.PROTECTION_ENVIRONMENTAL, random.nextInt(2) + 1);
 
         ItemStack netheriteHelm = new ItemStack(Material.NETHERITE_HELMET);
         netheriteHelm.addEnchantment(Enchantment.PROTECTION_ENVIRONMENTAL, 1);
 
-        // Драгоценности (без вещей из Энда)
         ItemStack diamonds = new ItemStack(Material.DIAMOND, random.nextInt(4) + 2);
         ItemStack emeralds = new ItemStack(Material.EMERALD, random.nextInt(8) + 4);
         ItemStack goldIngot = new ItemStack(Material.GOLD_INGOT, random.nextInt(12) + 6);
 
         ItemStack[] lootTable = {diamondChest, netheriteHelm, diamonds, emeralds, goldIngot};
         
-        // Выдаем 2 случайные вещи
         player.getInventory().addItem(lootTable[random.nextInt(lootTable.length)]);
         player.getInventory().addItem(lootTable[random.nextInt(lootTable.length)]);
     }
