@@ -21,7 +21,6 @@ public class ShipCommand implements CommandExecutor {
         }
 
         if (args.length > 0) {
-            // Спавн ивента
             if (args[0].equalsIgnoreCase("spawn")) {
                 sender.sendMessage(ChatColor.YELLOW + "Запуск спавна пиратского корабля...");
                 shipManager.spawnShipEvent();
@@ -29,7 +28,6 @@ public class ShipCommand implements CommandExecutor {
                 return true;
             }
 
-            // Остановка ивента
             if (args[0].equalsIgnoreCase("stop")) {
                 boolean stopped = shipManager.stopShipEvent();
                 if (stopped) {
