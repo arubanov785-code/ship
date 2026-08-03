@@ -34,25 +34,19 @@ public class ShipManager {
     private final Random random = new Random();
 
     public void spawnShipEvent() {
-        World world = Bukkit.getWorlds().get(0); // Основной мир
+        World world = Bukkit.getWorlds().get(0);
         Location spawnLoc = findSafeLocation(world);
         
         if (spawnLoc == null) {
-            Bukkit.getLogger().warning("Не удалось найти подходящую воду для корабля!");
+            Bukkit.getLogger().warning("Не удалось найти безопасное место для корабля!");
             return;
         }
 
-        // 1. Спавним схематику корабля через WorldEdit
         pasteSchematic(spawnLoc);
-        
-        // 2. Создаем защищенную зону WorldGuard
         createShipRegion(spawnLoc, world);
-        
-        // 3. Спавним команду корабля
         spawnPirates(spawnLoc);
 
-        // 4. Оповещаем весь сервер
-        String msg = String.format("&8[&c&lПИРАТЫ&8] &eЛинкор бросил якорь на &cX: %d, Z: %d&e! Уничтожьте команду и заберите сокровища!", 
+        String msg = String.format("&8[&c&lПИРАТЫ&8] &eКорабль бросил якорь на &cX: %d, Z: %d&e! Уничтожьте команду и заберите сокровища!", 
                 spawnLoc.getBlockX(), spawnLoc.getBlockZ());
         Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', msg));
     }
@@ -66,10 +60,8 @@ public class ShipManager {
             int y = world.getHighestBlockYAt(x, z);
             Location loc = new Location(world, x, y, z);
 
-            // Проверяем, что это вода
             if (!loc.getBlock().getType().name().contains("WATER")) continue;
 
-            // Проверяем удаленность от ДРУГИХ регионов (минимум 700 блоков)
             boolean isSafe = true;
             if (rm != null) {
                 for (ProtectedRegion region : rm.getRegions().values()) {
@@ -112,18 +104,15 @@ public class ShipManager {
         RegionManager rm = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
         if (rm == null) return;
 
-        // Удаляем старый регион ивента, если остался
         if (rm.hasRegion("pirate_ship_event")) {
             rm.removeRegion("pirate_ship_event");
         }
 
-        // Создаем прямоугольник 60x60 высотой 50 блоков под корабль
         BlockVector3 min = BlockVector3.at(loc.getX() - 30, loc.getY() - 5, loc.getZ() - 30);
         BlockVector3 max = BlockVector3.at(loc.getX() + 30, loc.getY() + 45, loc.getZ() + 30);
         
         ProtectedCuboidRegion region = new ProtectedCuboidRegion("pirate_ship_event", min, max);
         
-        // Флаги привата: запрет PvP и ломания
         region.setFlag(Flags.PVP, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_BREAK, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_PLACE, StateFlag.State.DENY);
@@ -134,7 +123,7 @@ public class ShipManager {
     private void spawnPirates(Location loc) {
         World world = loc.getWorld();
         
-        // Разбойники с арбалетами на высоты (мачты)
+        // Разбойники на мачтах
         for (int i = 0; i < 6; i++) {
             Location archerLoc = loc.clone().add(random.nextInt(10) - 5, 18, random.nextInt(10) - 5);
             Pillager p = (Pillager) world.spawnEntity(archerLoc, EntityType.PILLAGER);
@@ -142,7 +131,7 @@ public class ShipManager {
             p.setCustomNameVisible(true);
         }
 
-        // Поборники с топорами на палубу и в трюмы
+        // Поборники на палубе и в трюме
         for (int i = 0; i < 10; i++) {
             Location brawlerLoc = loc.clone().add(random.nextInt(14) - 7, 3, random.nextInt(14) - 7);
             Vindicator v = (Vindicator) world.spawnEntity(brawlerLoc, EntityType.VINDICATOR);
