@@ -20,6 +20,7 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Pillager;
@@ -32,6 +33,7 @@ import java.util.Random;
 public class ShipManager {
 
     private final Random random = new Random();
+    private Location lastSpawnLocation = null;
 
     public void spawnShipEvent() {
         World world = Bukkit.getWorlds().get(0);
@@ -42,6 +44,13 @@ public class ShipManager {
             return;
         }
 
+        // Если предыдущий корабль еще не был удален — удаляем его перед спавном нового
+        if (lastSpawnLocation != null) {
+            stopShipEvent();
+        }
+
+        this.lastSpawnLocation = spawnLoc;
+
         pasteSchematic(spawnLoc);
         createShipRegion(spawnLoc, world);
         spawnPirates(spawnLoc);
@@ -51,16 +60,85 @@ public class ShipManager {
         Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', msg));
     }
 
+    // -------------------------------------------------------------
+    // ПОЛНАЯ ОСТАНОВКА ИВЕНТАИ УДАЛЕНИЕ КОРАБЛЯ / МОБОВ / РЕГИОНА
+    // -------------------------------------------------------------
+    public boolean stopShipEvent() {
+        World world = Bukkit.getWorlds().get(0);
+        RegionManager rm = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
+        
+        boolean wasActive = false;
+
+        // 1. Удаляем защитный регион WorldGuard
+        if (rm != null && rm.hasRegion("pirate_ship_event")) {
+            rm.removeRegion("pirate_ship_event");
+            wasActive = true;
+        }
+
+        if (lastSpawnLocation != null) {
+            // 2. Убиваем всех пиратов вокруг точки корабля (в радиусе 60 блоков)
+            world.getNearbyEntities(lastSpawnLocation, 60, 60, 60).forEach(entity -> {
+                if (entity.getCustomName() != null && entity.getCustomName().contains("Пират")) {
+                    entity.remove();
+                }
+            });
+
+            // 3. Очищаем блоки корабля (Стираем постройку и заполняем нижнюю часть водой)
+            clearShipBlocks(lastSpawnLocation);
+            
+            lastSpawnLocation = null;
+            wasActive = true;
+        }
+
+        return wasActive;
+    }
+
+    private void clearShipBlocks(Location loc) {
+        World world = loc.getWorld();
+        int locX = loc.getBlockX();
+        int locY = loc.getBlockY();
+        int locZ = loc.getBlockZ();
+
+        // Проходим по кубу 60x60 блоков вокруг корабля
+        for (int x = locX - 30; x <= locX + 30; x++) {
+            for (int z = locZ - 30; z <= locZ + 30; z++) {
+                for (int y = locY - 5; y <= locY + 45; y++) {
+                    // Если блок находится ниже или на уровне океана (Y <= locY) — возвращаем ВОДУ
+                    if (y <= locY) {
+                        world.getBlockAt(x, y, z).setType(Material.WATER);
+                    } else {
+                        // Всё что выше уровня воды — очищаем ВОЗДУХОМ
+                        world.getBlockAt(x, y, z).setType(Material.AIR);
+                    }
+                }
+            }
+        }
+    }
+
     private Location findSafeLocation(World world) {
         RegionManager rm = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
         
         for (int i = 0; i < 100; i++) {
             int x = random.nextInt(8000) - 4000;
             int z = random.nextInt(8000) - 4000;
+            
             int y = world.getHighestBlockYAt(x, z);
-            Location loc = new Location(world, x, y, z);
+            Location checkLoc = new Location(world, x, y, z);
+            
+            while (checkLoc.getBlock().getType().name().contains("WATER") || 
+                   checkLoc.getBlock().getType() == Material.AIR) {
+                
+                if (checkLoc.getBlock().getType() == Material.AIR && 
+                    checkLoc.clone().add(0, -1, 0).getBlock().getType().name().contains("WATER")) {
+                    break;
+                }
+                checkLoc.add(0, 1, 0);
+                if (checkLoc.getBlockY() >= world.getMaxHeight() - 10) break;
+            }
 
-            if (!loc.getBlock().getType().name().contains("WATER")) continue;
+            if (!checkLoc.clone().add(0, -1, 0).getBlock().getType().name().contains("WATER")) {
+                continue;
+            }
 
             boolean isSafe = true;
             if (rm != null) {
@@ -73,7 +151,7 @@ public class ShipManager {
                     }
                 }
             }
-            if (isSafe) return loc;
+            if (isSafe) return checkLoc;
         }
         return null;
     }
@@ -90,6 +168,7 @@ public class ShipManager {
             try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(loc.getWorld()))) {
                 Operation operation = new ClipboardHolder(clipboard)
                         .createPaste(editSession)
+                        // Если нужно приподнять корабль над водой, измените y на loc.getY() + 3
                         .to(BlockVector3.at(loc.getX(), loc.getY(), loc.getZ()))
                         .ignoreAirBlocks(true)
                         .build();
@@ -123,7 +202,6 @@ public class ShipManager {
     private void spawnPirates(Location loc) {
         World world = loc.getWorld();
         
-        // Разбойники на мачтах
         for (int i = 0; i < 6; i++) {
             Location archerLoc = loc.clone().add(random.nextInt(10) - 5, 18, random.nextInt(10) - 5);
             Pillager p = (Pillager) world.spawnEntity(archerLoc, EntityType.PILLAGER);
@@ -131,7 +209,6 @@ public class ShipManager {
             p.setCustomNameVisible(true);
         }
 
-        // Поборники на палубе и в трюме
         for (int i = 0; i < 10; i++) {
             Location brawlerLoc = loc.clone().add(random.nextInt(14) - 7, 3, random.nextInt(14) - 7);
             Vindicator v = (Vindicator) world.spawnEntity(brawlerLoc, EntityType.VINDICATOR);
