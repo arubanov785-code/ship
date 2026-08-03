@@ -88,7 +88,6 @@ public class EventListener implements Listener {
         }
     }
 
-    // Приоритет HIGHEST, чтобы обходить запреты WorldGuard
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBarrelInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
