@@ -20,14 +20,28 @@ public class ShipCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length > 0 && args[0].equalsIgnoreCase("spawn")) {
-            sender.sendMessage(ChatColor.YELLOW + "Запуск принудительного спавна пиратского корабля...");
-            shipManager.spawnShipEvent();
-            sender.sendMessage(ChatColor.GREEN + "Ивент успешно запущен!");
-            return true;
+        if (args.length > 0) {
+            // Спавн ивента
+            if (args[0].equalsIgnoreCase("spawn")) {
+                sender.sendMessage(ChatColor.YELLOW + "Запуск спавна пиратского корабля...");
+                shipManager.spawnShipEvent();
+                sender.sendMessage(ChatColor.GREEN + "Корабль успешно заспавнен!");
+                return true;
+            }
+
+            // Остановка ивента
+            if (args[0].equalsIgnoreCase("stop")) {
+                boolean stopped = shipManager.stopShipEvent();
+                if (stopped) {
+                    sender.sendMessage(ChatColor.GREEN + "☠ Ивент остановлен: корабль убран, пираты уничтожены, приват снят!");
+                } else {
+                    sender.sendMessage(ChatColor.RED + "В данный момент активный ивент не найден.");
+                }
+                return true;
+            }
         }
 
-        sender.sendMessage(ChatColor.RED + "Использование: /pirateship spawn");
+        sender.sendMessage(ChatColor.RED + "Использование: /ps spawn или /ps stop");
         return true;
     }
 }
