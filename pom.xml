@@ -55,9 +55,22 @@
 
     <build>
         <resources>
+            <!-- Текстовые файлы пропускаем через фильтрацию -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
+                <includes>
+                    <include>plugin.yml</include>
+                </includes>
+            </resource>
+            <!-- Бинарные файлы (схематику) копируем КАК ЕСТЬ, без фильтрации -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>*.schem</include>
+                    <include>*.schematic</include>
+                </includes>
             </resource>
         </resources>
         <plugins>
