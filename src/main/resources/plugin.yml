@@ -1,0 +1,5 @@
+name: PirateShipEvent
+version: 1.0
+main: com.yourname.pirateship.PirateShipPlugin
+api-version: 1.13
+depend: [WorldEdit, WorldGuard]
