@@ -94,21 +94,29 @@ public class EventListener implements Listener {
         if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.BARREL) return;
 
         Location blockLoc = event.getClickedBlock().getLocation();
-
-        if (!isInShipRegion(blockLoc)) return;
-
         Player player = event.getPlayer();
         ItemStack itemHand = player.getInventory().getItemInMainHand();
 
+        boolean isKey = itemHand.getType() == Material.TRIPWIRE_HOOK && 
+                        itemHand.hasItemMeta() && 
+                        itemHand.getItemMeta().getDisplayName().contains("Ключ от пиратской бочки");
+
+        // ПРОВЕРКА: Если игрок кликает по бочке ВНЕ корабля
+        if (!isInShipRegion(blockLoc)) {
+            // Если в руках ключ - сообщаем, что он тут не работает
+            if (isKey) {
+                player.sendMessage(ChatColor.RED + "Этот ключ подходит только к бочкам на Пиратском Корабле!");
+                event.setCancelled(true);
+            }
+            return; // Даем открыться обычной бочке
+        }
+
+        // --- ДАЛЕЕ КОД ДЛЯ БОЧЕК НА КОРАБЛЕ ---
         if (openedBarrels.contains(blockLoc)) {
             player.sendMessage(ChatColor.RED + "Эта бочка уже пуста и разграблена!");
             event.setCancelled(true);
             return;
         }
-
-        boolean isKey = itemHand.getType() == Material.TRIPWIRE_HOOK && 
-                        itemHand.hasItemMeta() && 
-                        itemHand.getItemMeta().getDisplayName().contains("Ключ от пиратской бочки");
 
         if (!isKey) {
             event.setCancelled(true);
@@ -117,7 +125,6 @@ public class EventListener implements Listener {
         }
 
         event.setCancelled(true);
-
         itemHand.setAmount(itemHand.getAmount() - 1);
         openedBarrels.add(blockLoc);
 
