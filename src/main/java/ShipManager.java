@@ -53,6 +53,7 @@ public class ShipManager {
         pasteSchematic(spawnLoc);
         createShipRegion(spawnLoc, world);
         
+        // Задержка 2 секунды (40 тиков) для корректного обновления карты высот перед спавном мобов
         Bukkit.getScheduler().runTaskLater(PirateShipPlugin.getInstance(), () -> {
             spawnPirates(spawnLoc);
         }, 40L);
@@ -74,8 +75,8 @@ public class ShipManager {
         }
 
         if (lastSpawnLocation != null) {
-            // Убиваем мобов в радиусе 120 блоков
-            world.getNearbyEntities(lastSpawnLocation, 120, 120, 120).forEach(entity -> {
+            // Удаляем пиратов в радиусе 50 блоков
+            world.getNearbyEntities(lastSpawnLocation, 50, 50, 50).forEach(entity -> {
                 if (entity.getCustomName() != null && entity.getCustomName().contains("Пират")) {
                     entity.remove();
                 }
@@ -93,14 +94,15 @@ public class ShipManager {
     private void clearShipBlocks(Location loc) {
         World world = loc.getWorld();
 
-        world.getNearbyEntities(loc, 120, 120, 120).forEach(entity -> {
+        // 1. Быстро убираем выпавший дроп (радиус 50)
+        world.getNearbyEntities(loc, 50, 50, 50).forEach(entity -> {
             if (entity.getType() == EntityType.DROPPED_ITEM) {
                 entity.remove();
             }
         });
 
-        // УВЕЛИЧЕННЫЙ РАДИУС: 100 блоков во все стороны (200x200 зона)
-        int radius = 100;
+        // Сниженный радиус для идеальной производительности
+        int radius = 45;
         int minX = loc.getBlockX() - radius;
         int maxX = loc.getBlockX() + radius;
         int minZ = loc.getBlockZ() - radius;
@@ -109,25 +111,43 @@ public class ShipManager {
         int waterY = loc.getBlockY() - 1;
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world))) {
-            
-            BlockVector3 minWater = BlockVector3.at(minX, waterY - 15, minZ);
-            BlockVector3 maxWater = BlockVector3.at(maxX, waterY, maxZ);
-            com.sk89q.worldedit.regions.CuboidRegion waterRegion = new com.sk89q.worldedit.regions.CuboidRegion(minWater, maxWater);
-            editSession.setBlocks((com.sk89q.worldedit.regions.Region) waterRegion, BukkitAdapter.adapt(Material.WATER.createBlockData()));
+            // Включаем быстрый режим без сохранения логов отмены //undo (предотвращает зависание)
+            editSession.setFastMode(true);
 
-            // Высота мачт очищается вплоть до +80 блоков вверх
+            // 1. Очищаем всё, что ВЫШЕ уровня воды (палубу, мачты, паруса) -> меняем на ВОЗДУХ
             BlockVector3 minAir = BlockVector3.at(minX, waterY + 1, minZ);
-            BlockVector3 maxAir = BlockVector3.at(maxX, waterY + 80, maxZ);
+            BlockVector3 maxAir = BlockVector3.at(maxX, waterY + 50, maxZ);
             com.sk89q.worldedit.regions.CuboidRegion airRegion = new com.sk89q.worldedit.regions.CuboidRegion(minAir, maxAir);
             editSession.setBlocks((com.sk89q.worldedit.regions.Region) airRegion, BukkitAdapter.adapt(Material.AIR.createBlockData()));
+
+            // 2. БЕЗОПАСНАЯ ОЧИСТКА ТРЮМА ПОД ВОДОЙ:
+            // Заменяем только искусственные блоки (не трогаем песок, гравий и морское дно!)
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    for (int y = waterY - 12; y <= waterY; y++) {
+                        org.bukkit.block.Block block = world.getBlockAt(x, y, z);
+                        Material type = block.getType();
+
+                        // Если блок под водой не является водой, песком или гравием — значит это часть корабля!
+                        if (type != Material.WATER && type != Material.AIR && 
+                            type != Material.SAND && type != Material.GRAVEL && 
+                            type != Material.DIRT && type != Material.CLAY && 
+                            type != Material.SEAGRASS && type != Material.TALL_SEAGRASS) {
+                            
+                            block.setType(Material.WATER, false);
+                        }
+                    }
+                }
+            }
 
             Operations.complete(editSession.commit());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        // Подчищаем остатки дропа
         Bukkit.getScheduler().runTaskLater(PirateShipPlugin.getInstance(), () -> {
-            world.getNearbyEntities(loc, 120, 120, 120).forEach(entity -> {
+            world.getNearbyEntities(loc, 50, 50, 50).forEach(entity -> {
                 if (entity.getType() == EntityType.DROPPED_ITEM) {
                     entity.remove();
                 }
@@ -206,9 +226,9 @@ public class ShipManager {
             rm.removeRegion("pirate_ship_event");
         }
 
-        // Регион привата тоже увеличен до радиуса 100
-        BlockVector3 min = BlockVector3.at(loc.getX() - 100, loc.getY() - 15, loc.getZ() - 100);
-        BlockVector3 max = BlockVector3.at(loc.getX() + 100, loc.getY() + 80, loc.getZ() + 100);
+        // Радиус региона также подогнан под 45
+        BlockVector3 min = BlockVector3.at(loc.getX() - 45, loc.getY() - 15, loc.getZ() - 45);
+        BlockVector3 max = BlockVector3.at(loc.getX() + 45, loc.getY() + 50, loc.getZ() + 45);
         
         ProtectedCuboidRegion region = new ProtectedCuboidRegion("pirate_ship_event", min, max);
         
@@ -224,6 +244,7 @@ public class ShipManager {
     private void spawnPirates(Location loc) {
         World world = loc.getWorld();
         
+        // Пираты-Снайперы
         for (int i = 0; i < 6; i++) {
             int rx = loc.getBlockX() + random.nextInt(14) - 7;
             int rz = loc.getBlockZ() + random.nextInt(14) - 7;
@@ -235,12 +256,13 @@ public class ShipManager {
             p.setCustomNameVisible(true);
         }
 
+        // Пираты-Головорезы
         for (int i = 0; i < 10; i++) {
             int rx = loc.getBlockX() + random.nextInt(20) - 10;
             int rz = loc.getBlockZ() + random.nextInt(20) - 10;
             
             int highestY = world.getHighestBlockYAt(rx, rz);
-            Location brawlerLoc = new Location(world, rx, highestY + 2, rz);
+            Location brawlerLoc = new Location(world, rx, highestY + 3, rz);
             Vindicator v = (Vindicator) world.spawnEntity(brawlerLoc, EntityType.VINDICATOR);
             v.setCustomName(ChatColor.RED + "Пират-Головорез");
             v.setCustomNameVisible(true);
