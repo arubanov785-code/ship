@@ -36,7 +36,6 @@ public class ShipManager {
     private Location lastSpawnLocation = null;
 
     public void spawnShipEvent() {
-        // Получаем основной мир сервера
         World world = Bukkit.getWorlds().get(0);
         Location spawnLoc = findSafeLocation(world);
         
@@ -53,7 +52,10 @@ public class ShipManager {
 
         pasteSchematic(spawnLoc);
         createShipRegion(spawnLoc, world);
-        spawnPirates(spawnLoc);
+        
+        Bukkit.getScheduler().runTaskLater(PirateShipPlugin.getInstance(), () -> {
+            spawnPirates(spawnLoc);
+        }, 40L);
 
         String msg = String.format("&8[&c&lПИРАТЫ&8] &eКорабль бросил якорь на &cX: %d, Z: %d&e! Уничтожьте команду и заберите сокровища!", 
                 spawnLoc.getBlockX(), spawnLoc.getBlockZ());
@@ -72,7 +74,8 @@ public class ShipManager {
         }
 
         if (lastSpawnLocation != null) {
-            world.getNearbyEntities(lastSpawnLocation, 100, 100, 100).forEach(entity -> {
+            // Убиваем мобов в радиусе 120 блоков
+            world.getNearbyEntities(lastSpawnLocation, 120, 120, 120).forEach(entity -> {
                 if (entity.getCustomName() != null && entity.getCustomName().contains("Пират")) {
                     entity.remove();
                 }
@@ -90,33 +93,31 @@ public class ShipManager {
     private void clearShipBlocks(Location loc) {
         World world = loc.getWorld();
 
-        // 1. Очищаем выпавшие предметы в огромном радиусе
-        world.getNearbyEntities(loc, 100, 100, 100).forEach(entity -> {
+        world.getNearbyEntities(loc, 120, 120, 120).forEach(entity -> {
             if (entity.getType() == EntityType.DROPPED_ITEM) {
                 entity.remove();
             }
         });
 
-        // Радиус 55 блоков - удалит даже огромный корабль
-        int radius = 55;
+        // УВЕЛИЧЕННЫЙ РАДИУС: 100 блоков во все стороны (200x200 зона)
+        int radius = 100;
         int minX = loc.getBlockX() - radius;
         int maxX = loc.getBlockX() + radius;
         int minZ = loc.getBlockZ() - radius;
         int maxZ = loc.getBlockZ() + radius;
         
-        int waterY = loc.getBlockY();
+        int waterY = loc.getBlockY() - 1;
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world))) {
             
-            // ШАГ 1: Заливаем ВСЁ водой от дна до ватерлинии (заделываем дыры)
             BlockVector3 minWater = BlockVector3.at(minX, waterY - 15, minZ);
             BlockVector3 maxWater = BlockVector3.at(maxX, waterY, maxZ);
             com.sk89q.worldedit.regions.CuboidRegion waterRegion = new com.sk89q.worldedit.regions.CuboidRegion(minWater, maxWater);
             editSession.setBlocks((com.sk89q.worldedit.regions.Region) waterRegion, BukkitAdapter.adapt(Material.WATER.createBlockData()));
 
-            // ШАГ 2: Срезаем ВСЁ ВОЗДУХОМ выше уровня воды (сносим палубу, мачты, нос)
+            // Высота мачт очищается вплоть до +80 блоков вверх
             BlockVector3 minAir = BlockVector3.at(minX, waterY + 1, minZ);
-            BlockVector3 maxAir = BlockVector3.at(maxX, waterY + 60, maxZ);
+            BlockVector3 maxAir = BlockVector3.at(maxX, waterY + 80, maxZ);
             com.sk89q.worldedit.regions.CuboidRegion airRegion = new com.sk89q.worldedit.regions.CuboidRegion(minAir, maxAir);
             editSession.setBlocks((com.sk89q.worldedit.regions.Region) airRegion, BukkitAdapter.adapt(Material.AIR.createBlockData()));
 
@@ -126,7 +127,7 @@ public class ShipManager {
         }
 
         Bukkit.getScheduler().runTaskLater(PirateShipPlugin.getInstance(), () -> {
-            world.getNearbyEntities(loc, 100, 100, 100).forEach(entity -> {
+            world.getNearbyEntities(loc, 120, 120, 120).forEach(entity -> {
                 if (entity.getType() == EntityType.DROPPED_ITEM) {
                     entity.remove();
                 }
@@ -159,7 +160,6 @@ public class ShipManager {
                 continue;
             }
 
-            // Дистанция 700 блоков от ЛЮБЫХ приватов, включая спавн
             boolean isSafe = true;
             if (rm != null) {
                 for (ProtectedRegion region : rm.getRegions().values()) {
@@ -206,15 +206,15 @@ public class ShipManager {
             rm.removeRegion("pirate_ship_event");
         }
 
-        BlockVector3 min = BlockVector3.at(loc.getX() - 55, loc.getY() - 15, loc.getZ() - 55);
-        BlockVector3 max = BlockVector3.at(loc.getX() + 55, loc.getY() + 60, loc.getZ() + 55);
+        // Регион привата тоже увеличен до радиуса 100
+        BlockVector3 min = BlockVector3.at(loc.getX() - 100, loc.getY() - 15, loc.getZ() - 100);
+        BlockVector3 max = BlockVector3.at(loc.getX() + 100, loc.getY() + 80, loc.getZ() + 100);
         
         ProtectedCuboidRegion region = new ProtectedCuboidRegion("pirate_ship_event", min, max);
         
         region.setFlag(Flags.PVP, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_BREAK, StateFlag.State.DENY);
         region.setFlag(Flags.BLOCK_PLACE, StateFlag.State.DENY);
-        
         region.setFlag(Flags.CHEST_ACCESS, StateFlag.State.ALLOW);
         region.setFlag(Flags.INTERACT, StateFlag.State.ALLOW);
 
@@ -224,27 +224,23 @@ public class ShipManager {
     private void spawnPirates(Location loc) {
         World world = loc.getWorld();
         
-        // Пираты-Снайперы
         for (int i = 0; i < 6; i++) {
             int rx = loc.getBlockX() + random.nextInt(14) - 7;
             int rz = loc.getBlockZ() + random.nextInt(14) - 7;
             
             int highestY = world.getHighestBlockYAt(rx, rz);
-            
-            Location archerLoc = new Location(world, rx, highestY + 1, rz);
+            Location archerLoc = new Location(world, rx, highestY + 3, rz);
             Pillager p = (Pillager) world.spawnEntity(archerLoc, EntityType.PILLAGER);
             p.setCustomName(ChatColor.GOLD + "Пират-Снайпер");
             p.setCustomNameVisible(true);
         }
 
-        // Пираты-Головорезы
         for (int i = 0; i < 10; i++) {
             int rx = loc.getBlockX() + random.nextInt(20) - 10;
             int rz = loc.getBlockZ() + random.nextInt(20) - 10;
             
             int highestY = world.getHighestBlockYAt(rx, rz);
-            
-            Location brawlerLoc = new Location(world, rx, highestY + 1, rz);
+            Location brawlerLoc = new Location(world, rx, highestY + 2, rz);
             Vindicator v = (Vindicator) world.spawnEntity(brawlerLoc, EntityType.VINDICATOR);
             v.setCustomName(ChatColor.RED + "Пират-Головорез");
             v.setCustomNameVisible(true);
