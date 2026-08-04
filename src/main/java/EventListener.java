@@ -101,17 +101,14 @@ public class EventListener implements Listener {
                         itemHand.hasItemMeta() && 
                         itemHand.getItemMeta().getDisplayName().contains("Ключ от пиратской бочки");
 
-        // ПРОВЕРКА: Если игрок кликает по бочке ВНЕ корабля
         if (!isInShipRegion(blockLoc)) {
-            // Если в руках ключ - сообщаем, что он тут не работает
             if (isKey) {
                 player.sendMessage(ChatColor.RED + "Этот ключ подходит только к бочкам на Пиратском Корабле!");
                 event.setCancelled(true);
             }
-            return; // Даем открыться обычной бочке
+            return; 
         }
 
-        // --- ДАЛЕЕ КОД ДЛЯ БОЧЕК НА КОРАБЛЕ ---
         if (openedBarrels.contains(blockLoc)) {
             player.sendMessage(ChatColor.RED + "Эта бочка уже пуста и разграблена!");
             event.setCancelled(true);
@@ -143,29 +140,33 @@ public class EventListener implements Listener {
 
         lootPool.add(createEnchantedItem(Material.DIAMOND_HELMET, Enchantment.PROTECTION_ENVIRONMENTAL, 1, Enchantment.DURABILITY, 2));
         lootPool.add(createEnchantedItem(Material.DIAMOND_CHESTPLATE, Enchantment.PROTECTION_ENVIRONMENTAL, 2, Enchantment.DURABILITY, 1));
-        lootPool.add(createEnchantedItem(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_FIRE, 2, Enchantment.DURABILITY, 2));
         lootPool.add(createEnchantedItem(Material.DIAMOND_BOOTS, Enchantment.PROTECTION_FALL, 2, Enchantment.PROTECTION_ENVIRONMENTAL, 1));
+        lootPool.add(createEnchantedItem(Material.IRON_CHESTPLATE, Enchantment.PROTECTION_ENVIRONMENTAL, 2, null, 0));
+        lootPool.add(createEnchantedItem(Material.IRON_LEGGINGS, Enchantment.PROTECTION_FIRE, 2, null, 0));
 
         lootPool.add(createEnchantedItem(Material.NETHERITE_HELMET, Enchantment.PROTECTION_ENVIRONMENTAL, 1, Enchantment.WATER_WORKER, 1));
         lootPool.add(createEnchantedItem(Material.NETHERITE_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 2, Enchantment.PROTECTION_PROJECTILE, 2));
-        lootPool.add(createEnchantedItem(Material.NETHERITE_CHESTPLATE, Enchantment.PROTECTION_FIRE, 2, Enchantment.DURABILITY, 1));
 
         lootPool.add(createEnchantedItem(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 2, Enchantment.DURABILITY, 2));
+        lootPool.add(createEnchantedItem(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 2, null, 0));
         lootPool.add(createEnchantedItem(Material.NETHERITE_SWORD, Enchantment.DAMAGE_ALL, 1, Enchantment.FIRE_ASPECT, 1));
         lootPool.add(createEnchantedItem(Material.DIAMOND_PICKAXE, Enchantment.DIG_SPEED, 3, Enchantment.DURABILITY, 2));
         lootPool.add(createEnchantedItem(Material.CROSSBOW, Enchantment.QUICK_CHARGE, 1, Enchantment.DURABILITY, 2));
 
-        lootPool.add(new ItemStack(Material.DIAMOND, random.nextInt(4) + 2));
+        lootPool.add(new ItemStack(Material.DIAMOND, random.nextInt(3) + 1));
         lootPool.add(new ItemStack(Material.NETHERITE_INGOT, 1));
         lootPool.add(new ItemStack(Material.NETHERITE_SCRAP, random.nextInt(2) + 1));
-        lootPool.add(new ItemStack(Material.GOLD_BLOCK, random.nextInt(3) + 1));
+        lootPool.add(new ItemStack(Material.GOLD_BLOCK, random.nextInt(2) + 1));
         lootPool.add(new ItemStack(Material.EMERALD_BLOCK, random.nextInt(2) + 1));
         lootPool.add(new ItemStack(Material.IRON_INGOT, random.nextInt(12) + 6));
+        lootPool.add(new ItemStack(Material.GOLD_INGOT, random.nextInt(10) + 5));
 
-        lootPool.add(new ItemStack(Material.EXPERIENCE_BOTTLE, random.nextInt(12) + 5));
-        lootPool.add(new ItemStack(Material.GOLDEN_APPLE, random.nextInt(3) + 1));
+        lootPool.add(new ItemStack(Material.COOKED_BEEF, random.nextInt(8) + 4));
+        lootPool.add(new ItemStack(Material.ARROW, random.nextInt(16) + 10));
+        lootPool.add(new ItemStack(Material.EXPERIENCE_BOTTLE, random.nextInt(10) + 3));
+        lootPool.add(new ItemStack(Material.GOLDEN_APPLE, random.nextInt(2) + 1));
         lootPool.add(new ItemStack(Material.TNT, random.nextInt(6) + 2));
-        lootPool.add(new ItemStack(Material.FIREWORK_ROCKET, random.nextInt(16) + 8));
+        lootPool.add(new ItemStack(Material.FIREWORK_ROCKET, random.nextInt(7) + 1));
         lootPool.add(new ItemStack(Material.SPYGLASS, 1));
 
         int itemsToPlace = random.nextInt(4) + 3;
